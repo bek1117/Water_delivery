@@ -29,12 +29,12 @@ const createOrder = (req, res) => {
     promised_time,
     status,
   } = value;
-  const sql = `
+  const querry = `
     INSERT INTO order (user_id, deliver_id, water_count, total_price, date, promised_time, status)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
   db.query(
-    sql,
+    querry,
     [
       user_id,
       deliver_id,
@@ -66,14 +66,14 @@ const getAllOrders = (req, res) => {
     sortBy = "id",
     order = "ASC",
   } = req.query;
-  const sql = `
+  const querry = `
     SELECT * FROM order
     WHERE status LIKE ?
     ORDER BY ${sortBy} ${order.toUpperCase() === "DESC" ? "DESC" : "ASC"}
     LIMIT ? OFFSET ?
   `;
   db.query(
-    sql,
+    querry,
     [`%${search}%`, parseInt(limit), (parseInt(offset) - 1) * parseInt(limit)],
     (err, result) => {
       if (err)
@@ -119,13 +119,13 @@ const updateOrder = (req, res) => {
     promised_time,
     status,
   } = value;
-  const sql = `
+  const querry = `
     UPDATE order
     SET user_id=?, deliver_id=?, water_count=?, total_price=?, date=?, promised_time=?, status=?
     WHERE id=?
   `;
   db.query(
-    sql,
+    querry,
     [
       user_id,
       deliver_id,
@@ -160,10 +160,78 @@ const deleteOrder = (req, res) => {
   });
 };
 
+const getUserByspecificDates = (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  if (!startDate || !endDate) {
+    return res.status(400).send({
+      status: "error",
+      message: "Start date and end date are required",
+    });
+  }
+
+  const querry = `
+    SELECT DISTINCT u.id, u.first_name, u.last_name, u.phone_number
+    FROM order o
+    JOIN user u ON o.user_id = u.id
+    WHERE o.date BETWEEN ? AND ?
+  `;
+
+  db.query(querry, [startDate, endDate], (err, result) => {
+    if (err) {
+      return res.status(500).send({
+        status: "error",
+        message: err.message,
+      });
+    }
+
+    res.status(200).send({
+      status: "success",
+      data: result,
+    });
+  });
+};
+
+const getUserOrdersByNameLast6Months = (req, res) => {
+  const { first_name } = req.query;
+
+  if (!first_name) {
+    return res.status(400).send({
+      status: "error",
+      message: "First name is required",
+    });
+  }
+
+  const sql = `
+    SELECT o.id AS order_id, o.date, o.total_price, o.status, u.id AS user_id, u.first_name, u.last_name
+    FROM order o
+    JOIN user u ON o.user_id = u.id
+    WHERE u.first_name = ? AND o.date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+    ORDER BY o.date DESC
+  `;
+
+  db.query(sql, [first_name], (err, result) => {
+    if (err) {
+      return res.status(500).send({
+        status: "error",
+        message: err.message,
+      });
+    }
+
+    res.status(200).send({
+      status: "success",
+      data: result,
+    });
+  });
+};
+
+
 module.exports = {
   createOrder,
   getAllOrders,
   getOrderById,
   updateOrder,
   deleteOrder,
+  getUserByspecificDates,
+  getUserOrdersByNameLast6Months,
 };

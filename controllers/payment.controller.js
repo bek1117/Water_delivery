@@ -19,13 +19,11 @@ const createPayment = (req, res) => {
   db.query(sql, [order_id, type, status], (err, result) => {
     if (err)
       return res.status(500).send({ status: "error", message: err.message });
-    res
-      .status(201)
-      .send({
-        status: "success",
-        message: "Payment created",
-        id: result.insertId,
-      });
+    res.status(201).send({
+      status: "success",
+      message: "Payment created",
+      id: result.insertId,
+    });
   });
 };
 
